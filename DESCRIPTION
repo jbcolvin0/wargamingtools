@@ -1,0 +1,18 @@
+Package: wargamingtools
+Type: Package
+Title: Wargaming API access to World of Tanks
+Version: 0.1.0
+Author: Jacob Colvin
+Maintainer: Jacob Colvin <jbcolvin@gmail.com>
+Description: An R interface for creating urls to query the Wargaming API and decode the resulting JSON into a data.table.
+    See https://github.com/jbcolvin0/wargamingtools for details.
+License: file LICENSE
+Encoding: UTF-8
+LazyData: true
+Depends:
+    data.table
+Imports:
+    jsonlite,
+    ggplot2,  
+    stringr
+RoxygenNote: 7.1.1
