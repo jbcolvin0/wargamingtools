@@ -53,6 +53,41 @@ get_encyclopedia_vehicles = function( tier = 10L, application_id = get_applicati
 }
 
 
+#' @title get_account_info
+#' @description Get account information for account_ids from \url{https://api.worldoftanks.com/wot/account/info/}.
+#'
+#' More details at \url{https://developers.wargaming.net/reference/all/wot/account/info/}.
+#' @param account_id A vector of account_ids.
+#' @param statistics If TRUE, add additional account overall statistics, FALSE by default.
+#' @param application_id Your application_id from \url{https://developers.wargaming.net/applications/},
+#' retrieved by default using \code{\link{get_application_id}}.
+#' @export
+get_account_info = function( account_id, statistics=FALSE, application_id = get_application_id())
+{
+  account_id = as.integer(account_id)
+  rbindlist(lapply( chunk_vector(account_id,100L), function(account_id){
+    url = paste0("https://api.worldoftanks.com/wot/account/info/?application_id=",application_id,
+                 "&account_id=",paste0(account_id,collapse = ","),
+                 "&fields=-statistics.regular_team,-statistics.company,-statistics.historical,-statistics.team,-statistics.frags")
+    if(!statistics)
+      url = paste(url,",-statistics.clan,-statistics.clan,-statistics.all,-statistics.stronghold_defense,-statistics.stronghold_skirmish,-statistics.trees_cut")
+    x=fromJSON(url, flatten=TRUE)
+    ldt = lapply(x$data,function(y){
+      dt = as.data.table(y)
+      dt[,statistics:=NULL]
+      z=lapply( names(y$statistics),function(prefix){
+        dt0 = as.data.table(y$statistics[[prefix]])
+        if( ncol(dt0) > 1 ) names(dt0)<-paste0(prefix,".",names(dt0))
+        else names(dt0)<-prefix
+        dt0
+      })
+      cbind(dt,as.data.table(z))
+    })
+    rbindlist(ldt,fill=TRUE)
+  }))
+}
+
+
 #' @title get_account_tanks
 #' @description Get general account/tank information from \url{https://api.worldoftanks.com/wot/account/tanks/}.
 #' Will repeatedly query as needed when data exceeds 100 rows.
@@ -97,7 +132,11 @@ get_tanks_stats = function(account_id, tank_id, application_id = get_application
       url = paste0("https://api.worldoftanks.com/wot/tanks/stats/?application_id=",application_id,
                     "&account_id=",account_id,
                     "&tank_id=",paste0(tank_id,collapse=","),
-                    "&language=en&extra=epic,fallout,random,ranked,ranked_battles"
+                    "&language=en",
+                    #"&extra=epic,fallout,random,ranked,ranked_battles"
+                    "&extra=random,ranked,ranked_battles",
+                   "&fields=-team,-company"
+
       )
       as.data.table(fromJSON(url)$data[[1L]])
     }), fill=TRUE)
@@ -120,6 +159,7 @@ get_tanks_stats = function(account_id, tank_id, application_id = get_application
 #' More details at \url{https://developers.wargaming.net/reference/all/wot/tanks/achievements/}.
 #' @param account_id A single account_id.
 #' @param tank_id A possible vector of tank_ids.
+#' @param MOEonly Query only the Mark Of Excellence.
 #' @param application_id Your application_id from \url{https://developers.wargaming.net/applications/},
 #' retrieved by default using \code{\link{get_application_id}}.
 #' @export
@@ -243,21 +283,22 @@ get_clanmember_data = function( clan_id, tier = 10, application_id = get_applica
 {
   dt1 = get_clans_info(clan_id)
 
-  dt2 = get_tank_ids(tier=10)
+  dt2 = get_tank_ids(tier)
 
-  dt0 = get_account_tanks( dt1$account_id, dt2$tank_id, application_id = get_application_id())
-  dt0[,mark_of_mastery:=NULL]
+  dt3 = get_account_tanks( dt1$account_id, dt2$tank_id, application_id = get_application_id())
+  dt3[,mark_of_mastery:=NULL]
 
-  dt3 = rbindlist(lapply( dt1$account_id,function(account_id) get_tanks_stats( account_id, dt2$tank_id, application_id )))
+  dt4 = rbindlist(lapply( dt1$account_id,function(account_id) get_tanks_stats( account_id, dt2$tank_id, application_id )))
 
-  dt4 = rbindlist( lapply( dt1$account_id,function(account_id) get_tanks_achievements( account_id, dt2$tank_id, application_id )),fill=TRUE)
+  dt5 = rbindlist( lapply( dt1$account_id,function(account_id) get_tanks_achievements( account_id, dt2$tank_id, application_id )),fill=TRUE)
 
   dt1[,role_i18n:=NULL]
 
-  dt = merge(dt1,dt0,by="account_id",all=TRUE)
-  dt = merge(dt,dt2,by=c("tank_id"),all.x=TRUE)
-  dt = merge(dt,dt3,by=c("account_id","tank_id"),all=TRUE)
+  browser()
+  dt = merge(dt1,dt3,by="account_id",all=TRUE)
+  dt = merge(dt,dt2,by=c("tank_id"),all.x=TRUE)  # don't need tanks what no account has.
   dt = merge(dt,dt4,by=c("account_id","tank_id"),all=TRUE)
+  dt = merge(dt,dt5,by=c("account_id","tank_id"),all=TRUE)
 
   dt
 }
@@ -271,15 +312,28 @@ get_clanmember_data = function( clan_id, tier = 10, application_id = get_applica
 #' @param application_id Your application_id from \url{https://developers.wargaming.net/applications/},
 #' retrieved by default using \code{\link{get_application_id}}.
 #' @export
-get_account_tank_data = function( account_id, tank_id, application_id = get_application_id())
+get_account_tank_data = function( account_id,# tank_id,
+                                  tier=10, application_id = get_application_id())
 {
-  # maybe not ideal, some duplicate columns...  redo based on get_clanmember_data()
-  ldt = lapply( account_id, function(account_id){
-    dt = get_account_tanks( account_id, tank_id, application_id )
-    dt = merge(dt, get_tanks_stats( account_id, tank_id, application_id ),by=c("account_id","tank_id"))
-    dt = merge(dt, get_tanks_achievements( account_id, tank_id, application_id ), by=c("account_id","tank_id"))
-    dt
-  })
-  rbindlist(ldt,fill=TRUE)
+  if( length(account_id)>100)
+    warning("too many account_id, limit 100")
+
+  # TODO: find alternative to dt1 = get_clans_info(clan_id) to get account_name
+  dt1 = get_account_info(account_id)
+
+  dt2 = get_tank_ids(tier)
+
+  dt3 = get_account_tanks( account_id, dt2$tank_id, application_id = get_application_id())
+  dt3[,mark_of_mastery:=NULL]
+
+  dt4 = rbindlist(lapply( account_id,function(account_id) get_tanks_stats( account_id, dt2$tank_id, application_id )))
+
+  dt5 = rbindlist( lapply( account_id,function(account_id) get_tanks_achievements( account_id, dt2$tank_id, application_id )),fill=TRUE)
+
+  dt = merge(dt3,dt2,by=c("tank_id"),all.x=TRUE)  # don't need tanks what no account has.
+  dt = merge(dt,dt4,by=c("account_id","tank_id"),all=TRUE)
+  dt = merge(dt,dt5,by=c("account_id","tank_id"),all=TRUE)
+
+  dt
 }
 
