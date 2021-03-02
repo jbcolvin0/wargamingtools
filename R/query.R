@@ -14,17 +14,15 @@
 #'
 #' More details at \url{https://developers.wargaming.net/reference/all/wot/clans/info/}.
 #' @param clan_id The number representing the \code{clan_id}.
-#' @param extra Include the extra clan information not account specific.
+# @param extra Include the extra clan information not account specific.
 #' @param application_id Your application_id from \url{https://developers.wargaming.net/applications/},
 #' retrieved by default using \code{\link{get_application_id}}.
 #' @export
-get_clans_info = function( clan_id, extra=FALSE, application_id = get_application_id())
+get_clans_info = function( clan_id, application_id = get_application_id())
 {
   url = paste0("https://api.worldoftanks.com/wot/clans/info/?application_id=",
                application_id,"&clan_id=",paste0(clan_id,collapse = ","))
-
   json = fromJSON(url)
-
   as.data.table(json$data[[1L]]$members)
 }
 
@@ -40,8 +38,9 @@ get_clans_info = function( clan_id, extra=FALSE, application_id = get_applicatio
 get_encyclopedia_vehicles = function( tier = 10L, application_id = get_application_id())
 {
   # Get list of tier 10 tanks.
-  json_tanks = fromJSON(paste0("https://api.worldoftanks.com/wot/encyclopedia/vehicles/?application_id=",
-                               application_id,"&tier=",paste0(tier,collapse=","),"&language=en"))
+  url = paste0("https://api.worldoftanks.com/wot/encyclopedia/vehicles/?application_id=",
+                               application_id,"&tier=",paste0(tier,collapse=","),"&language=en")
+  json_tanks = fromJSON(url)
   dt_tanks = rbindlist(lapply(json_tanks$data,function(x)
     data.table(tank_id = x["tank_id"][[1L]],
                type=x["type"][[1L]],
@@ -102,10 +101,9 @@ get_account_tanks = function( account_id, tank_id, application_id = get_applicat
 {
   dt_account <- rbindlist(
   lapply( chunk_vector(tank_id,100L), function(tank_id){
-    json_account = fromJSON(paste0("https://api.worldoftanks.com/wot/account/tanks/?application_id=",application_id,
-                                    "&account_id=",paste0(account_id,collapse=","),
-                                   "&tank_id=",paste0(tank_id,collapse=",")),
-                            flatten=TRUE)
+    url = paste0("https://api.worldoftanks.com/wot/account/tanks/?application_id=",application_id,
+                 "&account_id=",paste0(account_id,collapse=","),"&tank_id=",paste0(tank_id,collapse=","))
+    json_account = fromJSON(url,flatten=TRUE)
     dt_account = as.data.table(rbindlist(json_account$data,idcol = TRUE))
     dt_account
   }))
@@ -144,6 +142,7 @@ get_tanks_stats = function(account_id, tank_id, application_id = get_application
 
   if( nrow( dt_stats[,.N,keyby=c("account_id","tank_id")][N>1] ) > 0){
     warning("Duplicate dt_stat rows!!!!!!!!!!!!!!!!!!")
+    N=NULL
     dt_stats = dt_stats[,.SD[1],keyby=c("account_id","tank_id")]
 
 #    all(dt_stats[account_id==1043990178   & tank_id==59681][1] == dt_stats[account_id==1043990178   & tank_id==59681][2],na.rm = TRUE)
@@ -159,7 +158,7 @@ get_tanks_stats = function(account_id, tank_id, application_id = get_application
 #' More details at \url{https://developers.wargaming.net/reference/all/wot/tanks/achievements/}.
 #' @param account_id A single account_id.
 #' @param tank_id A possible vector of tank_ids.
-#' @param MOEonly Query only the Mark Of Excellence.
+# @param MOEonly Query only the Mark Of Excellence.
 #' @param application_id Your application_id from \url{https://developers.wargaming.net/applications/},
 #' retrieved by default using \code{\link{get_application_id}}.
 #' @export
@@ -167,10 +166,9 @@ get_tanks_achievements = function(account_id, tank_id, application_id = get_appl
 {
   rbindlist(
     lapply( chunk_vector(tank_id,100L), function(tank_id){
-      as.data.table(fromJSON(paste0("https://api.worldoftanks.com/wot/tanks/achievements/?application_id=",application_id,
-                    "&account_id=",account_id,
-                    "&tank_id=",paste0(tank_id,collapse=","),
-                    "&language=en"), flatten=TRUE)$data[[1L]])
+      url = paste0("https://api.worldoftanks.com/wot/tanks/achievements/?application_id=",application_id,
+                   "&account_id=",account_id,"&tank_id=",paste0(tank_id,collapse=","),"&language=en")
+      as.data.table(fromJSON(url, flatten=TRUE)$data[[1L]])
     }), fill=TRUE)
 }
 
@@ -191,12 +189,11 @@ get_globalmap_eventaccountinfo = function(account_id,
                                           event_id="renaissance",
                                           application_id = get_application_id())
 {
-  dt_fame = rbindlist( lapply(account_id, function( account_id) {
-          fromJSON(paste0("https://api.worldoftanks.com/wot/globalmap/eventaccountinfo/?application_id=",
-                          application_id,"&account_id=",account_id,
-                          "&front_id=",front_id,
-                          "&event_id=",event_id))$data[[1L]][[1L]][[1L]]
-    }))
+  dt_fame = rbindlist( lapply(account_id, function( account_id){
+    url = paste0("https://api.worldoftanks.com/wot/globalmap/eventaccountinfo/?application_id=",
+                 application_id,"&account_id=",account_id,"&front_id=",front_id,"&event_id=",event_id)
+    fromJSON(url)$data[[1L]][[1L]][[1L]]
+  }))
   dt_fame = dt_fame[,c("account_id","battles","rank","fame_points")]
   setnames(dt_fame,c("battles","rank"),c("fame_battles","fame_rank"))
   dt_fame[,event_id:=event_id]
@@ -214,8 +211,9 @@ get_globalmap_eventaccountinfo = function(account_id,
 #' @export
 get_clans_list = function( search, application_id = get_application_id())
 {
-  json_clan = fromJSON(paste0("https://api.worldoftanks.com/wot/clans/list/?application_id=",
-                              application_id,"&language=en&search=",search),flatten = TRUE)
+  url = paste0("https://api.worldoftanks.com/wot/clans/list/?application_id=",
+               application_id,"&language=en&search=",search)
+  json_clan = fromJSON(url,flatten = TRUE)
   dt_clan = as.data.table(json_clan$data)
   dt_clan
 }
@@ -226,12 +224,11 @@ get_clans_list = function( search, application_id = get_application_id())
 #' @export
 get_xvm_expectedvalues = function()
 {
-  json_xvm = fromJSON("https://static.modxvm.com/wn8-data-exp/json/wn8exp.json",flatten = TRUE)
+  url = "https://static.modxvm.com/wn8-data-exp/json/wn8exp.json"
+  json_xvm = fromJSON(url,flatten = TRUE)
   dt_xvm = as.data.table(json_xvm$data)
   dt_xvm
 }
-
-
 
 
 #' @title get_tank_ids
@@ -241,8 +238,9 @@ get_xvm_expectedvalues = function()
 #' @export
 get_tank_ids = function( tier=6:10, application_id = get_application_id())
 {
-  json_tanks = fromJSON(paste0("https://api.worldoftanks.com/wot/encyclopedia/vehicles/?application_id=",application_id,
-                               "&tier=",paste0(tier,collapse=","),"&language=en"))
+  url = paste0("https://api.worldoftanks.com/wot/encyclopedia/vehicles/?application_id=",application_id,
+               "&tier=",paste0(tier,collapse=","),"&language=en")
+  json_tanks = fromJSON(url)
   dt_tanks = rbindlist(lapply(json_tanks$data,function(x){
     data.table(tank_id = x["tank_id"][[1]],
                type=x["type"][[1]],
@@ -263,9 +261,7 @@ get_clans_info = function( clan_id, application_id = get_application_id())
 {
   clan_id = as.integer(clan_id)
   url = paste0("https://api.worldoftanks.com/wot/clans/info/?application_id=",
-               application_id,
-               "&clan_id=",
-               paste0(clan_id,collapse = ","))
+               application_id,"&clan_id=",paste0(clan_id,collapse = ","))
   json_members = fromJSON(url)
   dt_members = as.data.table(json_members$data[[1]]$members)
   dt_members[,clan_id:=clan_id]
@@ -274,13 +270,16 @@ get_clans_info = function( clan_id, application_id = get_application_id())
 
 
 #' @title get_clanmember_data
-#' @param account_id A possible vector of account_ids.
-#' @param tank_id A possible vector of tank_ids.
+#' @param clan_id clan_id
+# @param tank_id A possible vector of tank_ids.
+#' @param tier Tank tier.
 #' @param application_id Your application_id from \url{https://developers.wargaming.net/applications/},
 #' retrieved by default using \code{\link{get_application_id}}.
 #' @export
 get_clanmember_data = function( clan_id, tier = 10, application_id = get_application_id())
 {
+  mark_of_mastery=role_i18n=NULL
+
   dt1 = get_clans_info(clan_id)
 
   dt2 = get_tank_ids(tier)
@@ -304,17 +303,18 @@ get_clanmember_data = function( clan_id, tier = 10, application_id = get_applica
 }
 
 
-
-
 #' @title get_account_tank_data
 #' @param account_id A possible vector of account_ids.
-#' @param tank_id A possible vector of tank_ids.
+# @param tank_id A possible vector of tank_ids.
+#' @param tier Tank tier.
 #' @param application_id Your application_id from \url{https://developers.wargaming.net/applications/},
 #' retrieved by default using \code{\link{get_application_id}}.
 #' @export
 get_account_tank_data = function( account_id,# tank_id,
                                   tier=10, application_id = get_application_id())
 {
+  mark_of_mastery=NULL
+
   if( length(account_id)>100)
     warning("too many account_id, limit 100")
 

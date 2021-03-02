@@ -8,6 +8,7 @@
 #' @importFrom data.table data.table fread setnames setkey setkeyv .N .SD copy := rbindlist dcast.data.table as.data.table set tstrsplit
 #' @importFrom ggplot2 ggplot
 #' @importFrom jsonlite fromJSON
+#' @importFrom utils write.csv
 #' @title wargamingtools: A package for downloading WarGaming data
 #' @author Jacob Colvin <jbcolvin@gmail.com>
 #' @description  wargamingtools: A package for downloading WarGaming data, specifically for clans in World of Tanks.  See https://github.com/jbcolvin0/wargamingtools for more details.
