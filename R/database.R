@@ -13,6 +13,8 @@
 #' @export
 save_clan_data = function( clan_id, tier=10, clanfile, path = get_path(), application_id = get_application_id() )
 {
+  clan_id = as.clan_id(clan_id)
+
   clantime = Sys.time()
 
   dt = get_clanmember_data( clan_id, tier = tier, application_id = application_id )
@@ -20,9 +22,10 @@ save_clan_data = function( clan_id, tier=10, clanfile, path = get_path(), applic
   if( missing(clanfile))
     clanfile = paste0("clan_",clan_id,"_",str_replace_all(clantime,":","-"),".csv")
 
-  print(file.path(path,clanfile))
+  file = file.path(path,clanfile)
+  print(file)
 
-  write.csv(dt,file=file.path(path,clanfile),row.names = FALSE)
+  write.csv(dt,file=file,row.names = FALSE)
 
   dt[]
 }

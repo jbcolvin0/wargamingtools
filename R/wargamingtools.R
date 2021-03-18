@@ -4,7 +4,7 @@
 # internal helper functions.
 
 
-#' @importFrom stringr str_match  str_match_all
+#' @importFrom stringr str_match  str_match_all str_replace_all
 #' @importFrom data.table data.table fread setnames setkey setkeyv .N .SD copy := rbindlist dcast.data.table as.data.table set tstrsplit
 #' @importFrom ggplot2 ggplot
 #' @importFrom jsonlite fromJSON
@@ -36,6 +36,49 @@ get_application_id <-function(path="~/.WarGaming_id.txt")
   application_id
 }
 
+#' @title as.clan_id
+#' @description coerce to a clan id using numeric clan_id or searching based on clan tag using get_clans_list().
+#' @param x clan_id or clan tag.
+#' @return integer clan_id
+#' @export
+as.clan_id <- function( x )
+{
+  tag=clan_id=NULL  # because of data.table
+
+  i = strtoi(x)
+  if( !is.na(i)){
+    return(i)
+  } else {
+    dt = get_clans_list(x)
+
+    if( nrow(dt) == 0)
+      stop("Returned zero search results using get_clans_list(x).")
+
+    if( nrow( dt[tag==x]) == 1 )
+      return( dt[tag==x,clan_id])
+
+    if( nrow(dt) == 1)
+      return( dt[,clan_id])
+
+    cat( "Warning: please select a tag or clan_id from...\n")
+    print( dt[,c("members_count","name","tag","clan_id")])
+    stop("bad clan_id")
+  }
+}
+
+#' @title get_path
+#' @description Get users default path for storing csv data from the wargaming api.
+#' Default is "~/wargamingtools_data/", which on windows will be in the Documents folder.
+#' @param path path to users default directory containing csv files.
+#' @return Users default path
+#' @export
+get_path <-function(path="~/wargamingtools_data")
+{
+  path = path.expand(path)
+  if( !dir.exists(path))
+    dir.create(path)
+  path
+}
 
 # See BBmisc::chunk for a more elaborate version.
 #' @title chunk_vector

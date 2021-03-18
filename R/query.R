@@ -139,9 +139,11 @@ get_tanks_stats = function(account_id, tank_id, application_id = get_application
       as.data.table(fromJSON(url)$data[[1L]])
     }), fill=TRUE)
 
+  if( FALSE ) { #nrow( dt_stats[,.N,keyby=c("account_id","tank_id")][N>1] ) > 0){
 
-  if( nrow( dt_stats[,.N,keyby=c("account_id","tank_id")][N>1] ) > 0){
     warning("Duplicate dt_stat rows!!!!!!!!!!!!!!!!!!")
+    browser()
+
     N=NULL
     dt_stats = dt_stats[,.SD[1],keyby=c("account_id","tank_id")]
 
@@ -209,7 +211,8 @@ get_globalmap_eventaccountinfo = function(account_id,
 #' @param application_id Your application_id from \url{https://developers.wargaming.net/applications/},
 #' retrieved by default using \code{\link{get_application_id}}.
 #' @export
-get_clans_list = function( search, application_id = get_application_id())
+get_clans_list = function( search, #page_no, all=FALSE,  also check with the meta data, to know if there are more search results.
+                           application_id = get_application_id())
 {
   url = paste0("https://api.worldoftanks.com/wot/clans/list/?application_id=",
                application_id,"&language=en&search=",search)
@@ -293,7 +296,6 @@ get_clanmember_data = function( clan_id, tier = 10, application_id = get_applica
 
   dt1[,role_i18n:=NULL]
 
-  browser()
   dt = merge(dt1,dt3,by="account_id",all=TRUE)
   dt = merge(dt,dt2,by=c("tank_id"),all.x=TRUE)  # don't need tanks what no account has.
   dt = merge(dt,dt4,by=c("account_id","tank_id"),all=TRUE)
