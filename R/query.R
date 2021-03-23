@@ -204,7 +204,7 @@ get_globalmap_eventaccountinfo = function(account_id,
 
 
 #' @title get_clans_list
-#' @description Get clan info given clan_id from \url{https://api.worldoftanks.com/wot/clans/list/}.
+#' @description Get clan info given clan tag from \url{https://api.worldoftanks.com/wot/clans/list/}.
 #'
 #' More details at \url{https://developers.wargaming.net/reference/all/wot/clans/list/}.
 #' @param search Text used to search for clans.
@@ -219,6 +219,25 @@ get_clans_list = function( search, #page_no, all=FALSE,  also check with the met
   json_clan = fromJSON(url,flatten = TRUE)
   dt_clan = as.data.table(json_clan$data)
   dt_clan
+}
+
+
+#' @title get_account_list
+#' @description Get account info given username from \url{https://api.worldoftanks.com/wot/account/list/}.
+#'
+#' More details at \url{https://developers.wargaming.net/reference/all/wot/account/list/}.
+#' @param search Text used to search for account.
+#' @param application_id Your application_id from \url{https://developers.wargaming.net/applications/},
+#' retrieved by default using \code{\link{get_application_id}}.
+#' @export
+get_account_list = function( search, #page_no, all=FALSE,  also check with the meta data, to know if there are more search results.
+                           application_id = get_application_id())
+{
+  url = paste0("https://api.worldoftanks.com/wot/account/list/?application_id=",
+               application_id,"&language=en&search=",search)
+  json_account = fromJSON(url,flatten = TRUE)
+  dt_account = as.data.table(json_account$data)
+  dt_account
 }
 
 
@@ -273,7 +292,7 @@ get_clans_info = function( clan_id, application_id = get_application_id())
 
 
 #' @title get_clanmember_data
-#' @param clan_id clan_id
+#' @param clan_id A single clan_id.
 # @param tank_id A possible vector of tank_ids.
 #' @param tier Tank tier.
 #' @param application_id Your application_id from \url{https://developers.wargaming.net/applications/},
@@ -281,6 +300,13 @@ get_clans_info = function( clan_id, application_id = get_application_id())
 #' @export
 get_clanmember_data = function( clan_id, tier = 10, application_id = get_application_id())
 {
+
+  if( length(clan_id)>1){
+    return( rbindlist(lapply( clan_id, function(account_id){
+      get_clanmember_data( clan_id, tier=tier, application_id = application_id)
+    })))
+  }
+
   mark_of_mastery=role_i18n=NULL
 
   dt1 = get_clans_info(clan_id)
@@ -296,10 +322,10 @@ get_clanmember_data = function( clan_id, tier = 10, application_id = get_applica
 
   dt1[,role_i18n:=NULL]
 
-  dt = merge(dt1,dt3,by="account_id",all=TRUE)
-  dt = merge(dt,dt2,by=c("tank_id"),all.x=TRUE)  # don't need tanks what no account has.
-  dt = merge(dt,dt4,by=c("account_id","tank_id"),all=TRUE)
-  dt = merge(dt,dt5,by=c("account_id","tank_id"),all=TRUE)
+  dta = merge(dt1,dt3,by="account_id")
+  dtb = merge(dta,dt2,by=c("tank_id"),all.x=TRUE)  # don't need tanks that no account has.
+  dtc = merge(dtb,dt4,by=c("account_id","tank_id"),all=TRUE)
+  dt = merge(dtc,dt5,by=c("account_id","tank_id"),all=TRUE)
 
   dt
 }
@@ -317,8 +343,12 @@ get_account_tank_data = function( account_id,# tank_id,
 {
   mark_of_mastery=NULL
 
-  if( length(account_id)>100)
-    warning("too many account_id, limit 100")
+  if( length(account_id)>100){
+    return( rbindlist(lapply( chunk_vector(account_id,100L), function(account_id){
+      get_account_tank_data( account_id, tier=tier, application_id = application_id)
+    })))
+    #warning("too many account_id, limit 100")
+  }
 
   # TODO: find alternative to dt1 = get_clans_info(clan_id) to get account_name
   dt1 = get_account_info(account_id)
