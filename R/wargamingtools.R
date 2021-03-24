@@ -59,10 +59,10 @@ set_application_id <- function(application_id,filename="~/.WarGaming_id.txt"){
 #' @export
 as.clan_id <- function( x )
 {
+  tag=clan_id=NULL  # because of data.table
+
   if( length(x)>1)
     return(sapply(x,as.clan_id))
-
-  tag=clan_id=NULL  # because of data.table
 
   i = strtoi(x)
   if( !is.na(i)){
@@ -92,10 +92,10 @@ as.clan_id <- function( x )
 #' @export
 as.account_id <- function(x)
 {
+  nickname=account_id=NULL  # because of data.table
+
   if( length(x)>1)
     return(sapply(x,as.account_id))
-
-  nickname=account_id=NULL  # because of data.table
 
   i = strtoi(x)
   if( !is.na(i)){

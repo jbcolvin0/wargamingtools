@@ -20,10 +20,44 @@
 #' @export
 get_clans_info = function( clan_id, application_id = get_application_id())
 {
+  clan_id = as.clan_id(clan_id)
   url = paste0("https://api.worldoftanks.com/wot/clans/info/?application_id=",
                application_id,"&clan_id=",paste0(clan_id,collapse = ","))
   json = fromJSON(url)
   as.data.table(json$data[[1L]]$members)
+}
+
+
+#' @title get_clans_accountinfo
+#' @description Get clan info given account_id from \url{https://api.worldoftanks.com/wot/clans/accountinfo/}.
+#'
+#' More details at \url{https://developers.wargaming.net/reference/all/wot/clans/accountinfo/}.
+#' @param account_id The number representing the \code{clan_id}.
+#' @param application_id Your application_id from \url{https://developers.wargaming.net/applications/},
+#' retrieved by default using \code{\link{get_application_id}}.
+#' @export
+get_clans_accountinfo = function( account_id, application_id = get_application_id())
+{
+  account_id = as.account_id(account_id)
+
+  rbindlist(
+  lapply( chunk_vector(account_id, 100L), function( account_id) {
+    url = paste0("https://api.worldoftanks.com/wot/clans/accountinfo/?application_id=",
+               application_id,"&account_id=",paste0(account_id,collapse = ","))
+
+    json = fromJSON(url, flatten=TRUE)
+
+    ldt = lapply(json$data,function(y){
+      data.table( clan_name = y$clan$name,
+                  clan_id = y$clan$clan_id,
+                  clan_tag = y$clan$tag,
+                  account_id = y$account_id,
+                  role = y$role,
+                  joined_at = y$joined_at,
+                  account_name = y$account_name)
+    })
+    rbindlist(ldt,fill=TRUE)
+  }),fill=TRUE)
 }
 
 
@@ -342,6 +376,8 @@ get_account_tank_data = function( account_id,# tank_id,
                                   tier=10, application_id = get_application_id())
 {
   mark_of_mastery=NULL
+
+  account_id = as.account_id(account_id)
 
   if( length(account_id)>100){
     return( rbindlist(lapply( chunk_vector(account_id,100L), function(account_id){
