@@ -11,7 +11,7 @@
 #' @param application_id application_id
 #' @return Users default path
 #' @export
-save_clan_data = function( clan_id, tier=10, clanfile, path = get_path(), application_id = get_application_id() )
+save_clan_data = function( clan_id, tier=10, clanfile = "clan_", path = get_path(), application_id = get_application_id() )
 {
   clan_id = as.clan_id(clan_id)
 
@@ -19,13 +19,12 @@ save_clan_data = function( clan_id, tier=10, clanfile, path = get_path(), applic
 
   dt = get_clanmember_data( clan_id, tier = tier, application_id = application_id )
 
-  if( missing(clanfile))
-    clanfile = paste0("clan_",clan_id,"_",str_replace_all(clantime,":","-"),".csv")
+  clanfile = paste0(clanfile,clan_id,"_",str_replace_all(clantime,":","-"),".csv")
 
   file = file.path(path,clanfile)
   print(file)
 
-  write.csv(dt,file=file,row.names = FALSE)
+  fwrite(dt,file)
 
   dt[]
 }
@@ -40,7 +39,8 @@ save_clan_data = function( clan_id, tier=10, clanfile, path = get_path(), applic
 #' @param application_id application_id
 #' @return Users default path
 #' @export
-save_account_data = function( account_id, tier=10, accountfile, path = get_path(), application_id = get_application_id() )
+save_account_data = function( account_id, tier=10, accountfile = "account_",
+                              path = get_path(), application_id = get_application_id() )
 {
   account_id = as.account_id(account_id)
 
@@ -48,15 +48,14 @@ save_account_data = function( account_id, tier=10, accountfile, path = get_path(
 
   dt = get_account_tank_data( account_id, tier = tier, application_id = application_id )
 
-  if( missing(accountfile))
-    accountfile = paste0("account_",account_id,"_",str_replace_all(accounttime,":","-"),".csv")
+  for( id in unique(dt$account_id)){
+    file = paste0(accountfile,id,"_",str_replace_all(accounttime,":","-"),".csv")
+    file = file.path(path,file)
+    print(file)
+    fwrite(dt[account_id==id],file)
+  }
 
-  file = file.path(path,accountfile)
-  print(file)
-
-  write.csv(dt,file=file,row.names = FALSE)
-
-  dt[]
+  dt
 }
 
 

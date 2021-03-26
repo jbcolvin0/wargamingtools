@@ -5,7 +5,7 @@
 
 
 #' @importFrom stringr str_match str_match_all str_replace_all
-#' @importFrom data.table data.table fread setnames setkey setkeyv .N .SD copy := rbindlist dcast.data.table as.data.table set tstrsplit setattr
+#' @importFrom data.table data.table fread fwrite setnames setkey setkeyv .N .SD copy := rbindlist dcast.data.table as.data.table set tstrsplit setattr
 #' @importFrom ggplot2 ggplot
 #' @importFrom jsonlite fromJSON
 #' @importFrom utils write.csv
@@ -133,6 +133,31 @@ get_path <-function(path="~/wargamingtools_data")
     dir.create(path)
   path
 }
+
+
+#' @title get_xvm_expectedvalues
+#' @description Get WN8 expected values from \url{https://modxvm.com/en/wn8-expected-values/}.
+#' @param filename Default is "wn8exp.csv"
+#' @param path Path to users default directory containing csv files.
+#' @export
+get_xvm_expectedvalues = function(filename="wn8exp.csv",path = get_path())
+{
+  # if less than 28 days, download xvm data, else if file exists, just use that....
+
+  filepath = file.path(path,filename)
+
+  if( file.exists( filepath ) && difftime( Sys.time(), file.info(filepath)$mtime,units="days") < 28)
+    return( fread( filepath))
+
+  url = "https://static.modxvm.com/wn8-data-exp/json/wn8exp.json"
+  json_xvm = fromJSON(url,flatten = TRUE)
+  dt_xvm = as.data.table(json_xvm$data)
+  fwrite(dt_xvm,filepath)
+  dt_xvm
+}
+
+
+
 
 # See BBmisc::chunk for a more elaborate version.
 #' @title chunk_vector
