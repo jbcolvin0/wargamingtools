@@ -120,6 +120,15 @@ as.account_id <- function(x)
   x
 }
 
+#' @title as.tank_id
+#' @description coerce to a tank_id using numeric tank_id or searching based on tank name using get_tank....().
+#' @param x tank_id or tank name.
+#' @return integer tank_id
+#' @export
+as.tank_id = function(x){
+  x
+}
+
 #' @title get_path
 #' @description Get users default path for storing csv data from the wargaming api.
 #' Default is "~/wargamingtools_data/", which on windows will be in the Documents folder.

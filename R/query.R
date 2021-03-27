@@ -21,10 +21,15 @@
 get_clans_info = function( clan_id, application_id = get_application_id())
 {
   clan_id = as.clan_id(clan_id)
-  url = paste0("https://api.worldoftanks.com/wot/clans/info/?application_id=",
-               application_id,"&clan_id=",paste0(clan_id,collapse = ","))
-  json = fromJSON(url)
-  as.data.table(json$data[[1L]]$members)
+
+  dt = rbindlist( lapply( clan_id, function(x){
+    url = paste0("https://api.worldoftanks.com/wot/clans/info/?application_id=",
+                 application_id,"&clan_id=",paste0(x,collapse = ","))
+    json = fromJSON(url)
+    as.data.table(json$data[[1L]]$members)
+  }))
+
+  dt
 }
 
 
@@ -298,66 +303,72 @@ get_tank_ids = function( tier=6:10, application_id = get_application_id())
 }
 
 
-#' @title get_clans_info
-#' @param clan_id A vector of clan_ids
-#' @param application_id Your application_id from \url{https://developers.wargaming.net/applications/},
-#' retrieved by default using \code{\link{get_application_id}}.
-#' @export
-get_clans_info = function( clan_id, application_id = get_application_id())
-{
-  clan_id = as.integer(clan_id)
-  url = paste0("https://api.worldoftanks.com/wot/clans/info/?application_id=",
-               application_id,"&clan_id=",paste0(clan_id,collapse = ","))
-  json_members = fromJSON(url)
-  dt_members = as.data.table(json_members$data[[1]]$members)
-  dt_members[,clan_id:=clan_id]
-  dt_members
-}
+# @title get_clans_info
+# @param clan_id A vector of clan_ids
+# @param application_id Your application_id from \url{https://developers.wargaming.net/applications/},
+# retrieved by default using \code{\link{get_application_id}}.
+# @export
+# get_clans_info = function( clan_id, application_id = get_application_id())
+# {
+#   clan_id = as.integer(clan_id)
+#   url = paste0("https://api.worldoftanks.com/wot/clans/info/?application_id=",
+#                application_id,"&clan_id=",paste0(clan_id,collapse = ","))
+#   json_members = fromJSON(url)
+#   dt_members = as.data.table(json_members$data[[1]]$members)
+#   dt_members[,clan_id:=clan_id]
+#   dt_members
+# }
 
 
-#' @title get_clanmember_data
+# @title get_clanmember_data
+# @param clan_id A single clan_id.
+# @param tank_id A possible vector of tank_ids.
+# @param tier Tank tier.
+# @param application_id Your application_id from \url{https://developers.wargaming.net/applications/},
+# retrieved by default using \code{\link{get_application_id}}.
+# @export
+# get_clanmember_data = function( clan_id, tier = 10, application_id = get_application_id())
+# {
+#
+#   if( length(clan_id)>1){
+#     return( rbindlist(lapply( clan_id, function(account_id){
+#       get_clanmember_data( clan_id, tier=tier, application_id = application_id)
+#     })))
+#   }
+#
+#   # We use this only for list of account_ids.
+#   dt1 = get_clans_info(clan_id, application_id = application_id)
+#
+#   dt = get_account_tank_data( dt1$account_id, tier=tier, application_id = application_id )
+#   dt
+# }
+
+
+#' @title get_account_tank_data
+#' @param account_id A possible vector of account_ids.
 #' @param clan_id A single clan_id.
 # @param tank_id A possible vector of tank_ids.
 #' @param tier Tank tier.
 #' @param application_id Your application_id from \url{https://developers.wargaming.net/applications/},
 #' retrieved by default using \code{\link{get_application_id}}.
 #' @export
-get_clanmember_data = function( clan_id, tier = 10, application_id = get_application_id())
-{
-
-  if( length(clan_id)>1){
-    return( rbindlist(lapply( clan_id, function(account_id){
-      get_clanmember_data( clan_id, tier=tier, application_id = application_id)
-    })))
-  }
-
-  # We use this only for list of account_ids.
-  dt1 = get_clans_info(clan_id, application_id = application_id)
-
-  dt = get_account_tank_data( dt1$account_id, tier=tier, application_id = application_id )
-  dt
-}
-
-
-#' @title get_account_tank_data
-#' @param account_id A possible vector of account_ids.
-# @param tank_id A possible vector of tank_ids.
-#' @param tier Tank tier.
-#' @param application_id Your application_id from \url{https://developers.wargaming.net/applications/},
-#' retrieved by default using \code{\link{get_application_id}}.
-#' @export
-get_account_tank_data = function( account_id,# tank_id,
+get_wot_data = function( account_id=NULL, clan_id=NULL, # tank_id,
                                   tier=10, application_id = get_application_id())
 {
   mark_of_mastery=NULL
 
-  account_id = as.account_id(account_id)
+  if( !is.null(clan_id)){
+    clan_id = as.clan_id(clan_id)
+    dt_clans = get_clans_info(clan_id, application_id = application_id)
+    account_id = unique( c( account_id,dt_clans$account_id) )
+  }
+
+  account_id = unique(as.account_id(account_id))
 
   if( length(account_id)>100){
     return( rbindlist(lapply( chunk_vector(account_id,100L), function(account_id){
-      get_account_tank_data( account_id, tier=tier, application_id = application_id)
-    })))
-    #warning("too many account_id, limit 100")
+      get_wot_data( account_id, tier=tier, application_id = application_id)
+    }),fill=TRUE))
   }
 
   dt1 = get_account_info(account_id, application_id = application_id)
@@ -365,20 +376,25 @@ get_account_tank_data = function( account_id,# tank_id,
 
   dt2 = get_tank_ids(tier,application_id = application_id)
 
+  # not full list of tanks???  use tank list from dt2
   dt3 = get_account_tanks( account_id, dt2$tank_id, application_id = application_id)
   dt3[,mark_of_mastery:=NULL]
 
   dt4 = rbindlist(lapply( account_id,function(account_id) get_tanks_stats( account_id, dt2$tank_id, application_id = application_id )))
 
   dt5 = rbindlist( lapply( account_id,function(account_id) get_tanks_achievements( account_id, dt2$tank_id, application_id = application_id )),fill=TRUE)
+  #dt5[,achievements.markOfMastery:=NULL]
 
-  dt = merge(dt1,dt1c,by=c("account_id","account_name","clan_id"),all=TRUE)
-  dt = merge(dt,dt3,by="account_id")
-  dt = merge(dt,dt2,by=c("tank_id"),all.x=TRUE)  # don't need tanks what no account has.
-  dt = merge(dt,dt4,by=c("account_id","tank_id"),all=TRUE)
-  dt = merge(dt,dt5,by=c("account_id","tank_id"),all=TRUE)
+  dt_account = merge(dt1,dt1c,by=c("account_id","account_name","clan_id"),all=TRUE)
+
+  dt_account_tank = merge(dt4,dt5,by=c("account_id","tank_id"),all=TRUE)
+  dt_account_tank = merge(dt_account_tank,dt3,all=TRUE)
+  dt_account_tank = merge(dt2,dt_account_tank,by=c("tank_id"),all.y=TRUE)
+
+  dt = merge( dt_account,dt_account_tank,by="account_id")
 
   setkey(dt,"account_id","tank_id")
+
   dt
 }
 
