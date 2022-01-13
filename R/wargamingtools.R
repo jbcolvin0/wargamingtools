@@ -4,11 +4,11 @@
 # internal helper functions.
 
 
-#' @importFrom stringr str_match str_match_all str_replace_all
+#' @importFrom stringr str_detect str_match str_match_all str_replace_all
 #' @importFrom data.table data.table fread fwrite setnames setkey setkeyv .N .SD copy := rbindlist dcast.data.table as.data.table set tstrsplit setattr
 #' @importFrom ggplot2 ggplot
 #' @importFrom jsonlite fromJSON
-#' @importFrom utils write.csv
+#' @importFrom utils write.csv menu
 #' @title wargamingtools: A package for downloading WarGaming data
 #' @author Jacob Colvin <jbcolvin@gmail.com>
 #' @description  wargamingtools: A package for downloading WarGaming data, specifically for clans in World of Tanks.  See https://github.com/jbcolvin0/wargamingtools for more details.
@@ -28,9 +28,10 @@ NULL
 get_application_id <-function(filename="~/.WarGaming_id.txt")
 {
   if( file.exists(filename)){
-    application_id=readLines("~/.WarGaming_id.txt",warn=FALSE)[1L]
+    application_id=readLines(filename,warn=FALSE)[1L]
   }else{
-    warning(paste0("Please add your wargaming id to ",filename))
+    warning(paste0("Please add your wargaming id to ",filename,
+                   ", or explicitly specify application_id."))
     application_id = "None"
   }
   application_id
@@ -49,6 +50,29 @@ set_application_id <- function(application_id,filename="~/.WarGaming_id.txt"){
   write(application_id,filename)
   print(paste("application_id writen to",path.expand(filename)))
   application_id
+}
+
+
+#' @title get_path
+#' @description Get users default path for storing csv data.
+#' Default is "~/wargamingtools_data/", which on windows will be in the Documents folder,
+#' unless an override exists in "~/.WarGaming_path.txt".
+#' @param path path to users default directory containing csv files.
+#' @return Users default path
+#' @export
+get_path <-function(path)
+{
+  if( missing(path)){
+    if( file.exists("~/.WarGaming_path.txt"))
+      path=readLines("~/.WarGaming_path.txt",warn=FALSE)[1L]
+    else
+      path = "~/wargamingtools_data"
+  }
+
+  path = path.expand(path)
+  if( !dir.exists(path))
+    dir.create(path)
+  path
 }
 
 
@@ -127,20 +151,6 @@ as.account_id <- function(x)
 #' @export
 as.tank_id = function(x){
   x
-}
-
-#' @title get_path
-#' @description Get users default path for storing csv data from the wargaming api.
-#' Default is "~/wargamingtools_data/", which on windows will be in the Documents folder.
-#' @param path path to users default directory containing csv files.
-#' @return Users default path
-#' @export
-get_path <-function(path="~/wargamingtools_data")
-{
-  path = path.expand(path)
-  if( !dir.exists(path))
-    dir.create(path)
-  path
 }
 
 
